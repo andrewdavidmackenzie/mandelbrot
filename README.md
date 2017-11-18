@@ -45,6 +45,11 @@ To run the benchmark test use one of these two:
 - rustup run nightly cargo bench
 
 ### v1.0.0 - Initial Single Threaded Implementation
-real    0m6.250s  
-user    0m6.109s  
-test tests::bench_render_1000_by_1000 ... bench: 514,542,138 ns/iter (+/- 33,268,484)  
+6.250 real         6.109 user         0.05 sys  
+bench: 514,542,138 ns/iter (+/- 33,268,484)  
+
+### v1.0.1 - Minor tweaks in the single threaded code
+Avoid writing 0 to pixel buffer when not in set, as it's already initialized to zero
+6.19 real         6.05 user         0.05 sys  
+bench: 513,143,436 ns/iter (+/- 37,743,921)  
+bench: 510,725,605 ns/iter (+/- 56,052,267)  

@@ -99,10 +99,11 @@ fn render(pixels: &mut [u8], bounds: (usize, usize),
     for r in 0..bounds.1 {
         for c in 0..bounds.0 {
             let point = pixel_to_point(bounds, (c,r), upper_left, lower_right);
-            // TODO if it reaches 255 we also write a zero, so make limit 254 to speed up?
-            pixels[r * bounds.0 + c ] = match escapes(Complex {re: point.0, im: point.1}, 255) {
-                None => 0, // TODO this write of a zero can be removed....
-                Some(count) => 255 - count as u8
+            match escapes(Complex {re: point.0, im: point.1}, 255) {
+                None => {}, // This assumes the buffer is initialized to 0 and so skips this write
+                Some(count) => {
+                    pixels[r * bounds.0 + c ] = 255 - count as u8;
+                }
             };
         }
     }

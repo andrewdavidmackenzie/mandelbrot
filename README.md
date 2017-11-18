@@ -44,7 +44,7 @@ To run the benchmark test use one of these two:
 - cargo +nightly bench
 - rustup run nightly cargo bench
 
-### v1 - Initial Single Threaded Implementation
-real    0m6.250s
-user    0m6.109s
-test tests::bench_render_1000_by_1000 ... bench: 514,542,138 ns/iter (+/- 33,268,484)
+### v1.0.0 - Initial Single Threaded Implementation
+real    0m6.250s  
+user    0m6.109s  
+test tests::bench_render_1000_by_1000 ... bench: 514,542,138 ns/iter (+/- 33,268,484)  

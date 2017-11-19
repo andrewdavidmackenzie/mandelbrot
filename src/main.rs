@@ -96,15 +96,17 @@ fn render(pixels: &mut [u8], bounds: (usize, usize),
           upper_left: (f64, f64), lower_right: (f64, f64)) {
     assert_eq!(pixels.len(), bounds.0 * bounds.1);
 
+    let mut offset : usize = 0;
     for r in 0..bounds.1 {
         for c in 0..bounds.0 {
             let point = pixel_to_point(bounds, (c,r), upper_left, lower_right);
             match escapes(Complex {re: point.0, im: point.1}, 255) {
                 None => {}, // This assumes the buffer is initialized to 0 and so skips this write
                 Some(count) => {
-                    pixels[r * bounds.0 + c ] = 255 - count as u8;
+                    pixels[offset] = 255 - count as u8;
                 }
             };
+            offset += 1;
         }
     }
 }

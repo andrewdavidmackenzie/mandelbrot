@@ -45,7 +45,7 @@ To run the benchmark test use one of these two:
 - rustup run nightly cargo bench
 
 ### v1.0.0 - Initial Single Threaded Implementation
-6.250 real         6.109 user         0.05 sys  
+6.25 real         6.11 user         0.05 sys  
 bench: 514,542,138 ns/iter (+/- 33,268,484)  
 
 ### v1.0.1 - Minor tweaks in the single threaded code
@@ -53,3 +53,12 @@ Avoid writing 0 to pixel buffer when not in set, as it's already initialized to 
 6.19 real         6.05 user         0.05 sys  
 bench: 513,143,436 ns/iter (+/- 37,743,921)  
 bench: 510,725,605 ns/iter (+/- 56,052,267)  
+
+### v1.0.2 - Another minor tweak in the single threaded code
+Simplify the index arrithmetic in addressing the pixel buffer, avoiding 
+multiplies and adds and just incrementing an offset into the pixel buffer.
+
+6.14 real         5.98 user         0.06 sys
+bench: 502,205,421 ns/iter (+/- 92,783,074)
+bench: 511,686,945 ns/iter (+/- 62,674,916)
+bench: 504,082,705 ns/iter (+/- 21,991,316)

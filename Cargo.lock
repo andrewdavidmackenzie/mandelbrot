@@ -122,7 +122,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "mandlebrot"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
  "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "dir-diff 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

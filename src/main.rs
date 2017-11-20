@@ -12,7 +12,6 @@ use image::png::PNGEncoder;
 extern crate test;
 extern crate dir_diff;
 extern crate tempdir;
-extern crate crossbeam;
 
 use std::fs::File;
 use std::path::PathBuf;
@@ -37,7 +36,7 @@ fn main() {
 
     let mut pixels = vec![0; bounds.0 * bounds.1];
 
-    render_threaded(1, &mut pixels, bounds, upper_left, lower_right);
+    render(&mut pixels, bounds, upper_left, lower_right);
 
     write_bitmap(&filename, &pixels, bounds).expect("error writing PNG file");
 }
@@ -79,7 +78,7 @@ fn pixel_to_point(bounds: (usize, usize), pixel: (usize, usize),
                   upper_left: Complex<f64>,
                   lower_right: Complex<f64>) -> Complex<f64>
 {
-    // Extract these two calculations outside the function and calling loop
+    // TODO Extract these two calculations outside the function and calling loop
     let width = lower_right.re - upper_left.re;
     let height = upper_left.im - lower_right.im;
 
@@ -113,61 +112,38 @@ fn escapes(c: Complex<f64>, limit: u32) -> Option<u32> {
     return None;
 }
 
-/// This function does the rendering using the specified number of threads
-// TODO note that the output file changes when # threads is > 1 and is even !!!! Sounds like a bug to me
-fn render_threaded(num_threads: usize, pixels: &mut [u8], bounds: (usize, usize),
-                   upper_left: Complex<f64>, lower_right: Complex<f64>) {
-
-    let rows_per_band = match bounds.1 % num_threads {
-        0 => bounds.1 / num_threads,
-        _ => bounds.1 / num_threads + 1
-    };
-
-    {
-        let bands: Vec<&mut [u8]> = pixels.chunks_mut(rows_per_band * bounds.0).collect();
-        crossbeam::scope(|spawner| {
-            for (i, band) in bands.into_iter().enumerate() {
-                let top = rows_per_band * i;
-                let height = band.len() / bounds.0;
-                let band_bounds = (bounds.0, height);
-                let band_upper_left = pixel_to_point(bounds, (0, top),
-                                                     upper_left, lower_right);
-                let band_lower_right = pixel_to_point(bounds, (bounds.0,
-                                                               top + rows_per_band),
-                                                      upper_left, lower_right);
-                spawner.spawn(move || {
-                    render_band(band, band_bounds, band_upper_left, band_lower_right);
-                });
-            }
-        });
+fn render(pixels: &mut [u8], bounds: (usize, usize),
+          upper_left: Complex<f64>, lower_right: Complex<f64>) {
+    let rows: Vec<&mut [u8]> = pixels.chunks_mut(bounds.0).collect();
+    for (row_index, row) in rows.into_iter().enumerate() {
+        let row_bounds = (bounds.0, 1);
+        let row_upper_left = pixel_to_point(bounds, (0, row_index),
+                                             upper_left, lower_right);
+        let row_lower_right = pixel_to_point(bounds, (bounds.0, row_index),
+                                              upper_left, lower_right);
+        render_row(row, row_bounds, row_index, row_upper_left, row_lower_right);
     }
 }
 
-/// Render a rectangle of the Mandlebrot set into a buffer of pixels
+/// Render a row of the Mandlebrot set into a buffer of pixels
 /// The 'bounds' argument gives the width and height of the buffer 'pixels' which holds one
 /// grayscale pixel per byte. The 'upper_left' and 'lower_right' arguments specify points on the
 /// complex plane corresponding to the upper left and lower right corners of the pixel buffer.
-fn render_band(pixels: &mut [u8], bounds: (usize, usize),
-               upper_left: Complex<f64>, lower_right: Complex<f64>) {
-    // TODO this fails if number of threads is greater than 10!
-    assert_eq!(pixels.len(), bounds.0 * bounds.1);
-
+fn render_row(pixels: &mut [u8], bounds: (usize, usize), row_index: usize,
+              upper_left: Complex<f64>, lower_right: Complex<f64>) {
     let mut offset: usize = 0;
 
-    for row in 0..bounds.1 {
-        // rows
-        for column in 0..bounds.0 {
-            // columns
-            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+    for column in 0..bounds.0 {
+        // columns
+        let point = pixel_to_point(bounds, (column, row_index), upper_left, lower_right);
 
-            match escapes(point, 255) {
-                None => {} // This assumes the buffer is initialized to 0 and so skips this write
-                Some(count) => {
-                    pixels[offset] = 255 - count as u8;
-                }
-            };
-            offset += 1; // move forward a byte in the pixel buffer
-        }
+        match escapes(point, 255) {
+            None => {} // This assumes the buffer is initialized to 0 and so skips this write
+            Some(count) => {
+                pixels[offset] = 255 - count as u8;
+            }
+        };
+        offset += 1; // move forward a byte in the pixel buffer
     }
 }
 
@@ -230,67 +206,17 @@ mod tests {
         let lower_right = Complex { re: -1.0, im: 0.20 };
         let mut pixels = vec![0; bounds.0 * bounds.1];
 
-        b.iter(|| render_band(&mut pixels, bounds, upper_left, lower_right));
+        b.iter(|| render(&mut pixels, bounds, upper_left, lower_right));
     }
 
     #[bench]
-    fn bench_render_threaded_01t_1000_by_1000(b: &mut Bencher) {
+    fn bench_render_threaded_1000_by_1000(b: &mut Bencher) {
         let bounds = (1000, 1000);
         let upper_left = Complex { re: -1.20, im: 0.35 };
         let lower_right = Complex { re: -1.0, im: 0.20 };
         let mut pixels = vec![0; bounds.0 * bounds.1];
 
-        b.iter(|| render_threaded(1, &mut pixels, bounds, upper_left, lower_right));
-    }
-
-    #[bench]
-    fn bench_render_threaded_02t_1000_by_1000(b: &mut Bencher) {
-        let bounds = (1000, 1000);
-        let upper_left = Complex { re: -1.20, im: 0.35 };
-        let lower_right = Complex { re: -1.0, im: 0.20 };
-        let mut pixels = vec![0; bounds.0 * bounds.1];
-
-        b.iter(|| render_threaded(2, &mut pixels, bounds, upper_left, lower_right));
-    }
-
-    #[bench]
-    fn bench_render_threaded_04t_1000_by_1000(b: &mut Bencher) {
-        let bounds = (1000, 1000);
-        let upper_left = Complex { re: -1.20, im: 0.35 };
-        let lower_right = Complex { re: -1.0, im: 0.20 };
-        let mut pixels = vec![0; bounds.0 * bounds.1];
-
-        b.iter(|| render_threaded(4, &mut pixels, bounds, upper_left, lower_right));
-    }
-
-    #[bench]
-    fn bench_render_threaded_08t_1000_by_1000(b: &mut Bencher) {
-        let bounds = (1000, 1000);
-        let upper_left = Complex { re: -1.20, im: 0.35 };
-        let lower_right = Complex { re: -1.0, im: 0.20 };
-        let mut pixels = vec![0; bounds.0 * bounds.1];
-
-        b.iter(|| render_threaded(8, &mut pixels, bounds, upper_left, lower_right));
-    }
-
-    #[bench]
-    fn bench_render_threaded_10t_1000_by_1000(b: &mut Bencher) {
-        let bounds = (1000, 1000);
-        let upper_left = Complex { re: -1.20, im: 0.35 };
-        let lower_right = Complex { re: -1.0, im: 0.20 };
-        let mut pixels = vec![0; bounds.0 * bounds.1];
-
-        b.iter(|| render_threaded(10, &mut pixels, bounds, upper_left, lower_right));
-    }
-
-    #[bench]
-    fn bench_render_threaded_12t_1000_by_1000(b: &mut Bencher) {
-        let bounds = (1000, 1000);
-        let upper_left = Complex { re: -1.20, im: 0.35 };
-        let lower_right = Complex { re: -1.0, im: 0.20 };
-        let mut pixels = vec![0; bounds.0 * bounds.1];
-
-        b.iter(|| render_threaded(12, &mut pixels, bounds, upper_left, lower_right));
+        b.iter(|| render(&mut pixels, bounds, upper_left, lower_right));
     }
 
     // TODO fix this test
@@ -305,7 +231,7 @@ mod tests {
         let lower_right = Complex { re: -1.0, im: 0.20 };
         let mut pixels = vec![0; bounds.0 * bounds.1];
 
-        render_band(&mut pixels, bounds, upper_left, lower_right);
+        render(&mut pixels, bounds, upper_left, lower_right);
         write_bitmap(&filename, &pixels, bounds).expect("error writing PNG file");
         println!("Written bitmap to '{:?}'", filename);
 

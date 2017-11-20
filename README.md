@@ -140,3 +140,25 @@ test tests::bench_render_threaded_08t_1000_by_1000 ... bench: 151,689,600 ns/ite
 test tests::bench_render_threaded_10t_1000_by_1000 ... bench: 140,472,366 ns/iter (+/- 17,968,631)  
 test tests::bench_render_threaded_12t_1000_by_1000 ... bench: 138,224,777 ns/iter (+/- 25,675,038)  
 
+### v3.0.0 Row by row rendering
+After reading a bit about rayon, which uses parallel iterators, a threadpool and dynamic work stealing I 
+decided that I didn't want to split the work into a fixed number of (faily large) bands as was done
+with the crossbeam implementation, but I wanted to split it into a lot more smaller chunks of work that
+would normally be done sequetnially with an iterator, and see how well rayon did handling that.
+
+I decided to split the work into rows. Alternatives which I considered (and may try and benchmark later
+for fun) were into blocks (less suitable due to arrangement of bytes in memory IMO) or the more radical
+pixel by pixel approach (that reminds me of programming in Occam in University....but that's another story).
+
+So, first commit was to make it work row by row, and benchmark the single threaded version against the 
+previous single threaded versions.
+
+The performance was not surprisingly very similar to the previous single-thread banded implementation,
+as the overhead to split into a the entire number of rows is small compared to the total
+rendering time.
+
+Band-by-Band: 5.95 real         5.79 user         0.05 sys  
+Row-by-Row:   6.02 real         5.76 user         0.07 sys  
+
+Band-by-Band: - bench_render_100_by_100           5,721,979 ns/iter (+/- 1,813,252)  
+Row-by-Row:   - bench_render_100_by_100           4,834,289 ns/iter (+/- 646,533)  

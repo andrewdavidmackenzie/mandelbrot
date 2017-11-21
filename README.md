@@ -162,3 +162,22 @@ Row-by-Row:   6.02 real         5.76 user         0.07 sys
 
 Band-by-Band: - bench_render_100_by_100           5,721,979 ns/iter (+/- 1,813,252)  
 Row-by-Row:   - bench_render_100_by_100           4,834,289 ns/iter (+/- 646,533)  
+
+### v3.1.0 First rayon version
+As we don't know how many threads rayon will use, we can forget about passing in the number of threads
+and benchmarking the time for different number of threads. We will be concerns just with what's the fastest
+time rayon can do, and how that compares with the crossbeam version.
+
+Rayon got the real time down some more to:   
+1.59 real         5.59 user         0.03 sys
+
+beating the previous best of 1.77! So 89% or an 11% drop. Nice job Rayon!
+
+Benchmark numbers (rayon):  
+bench_render_100_by_100            ... bench:   1,379,883 ns/iter (+/- 1,979,599)  
+bench_render_threaded_1000_by_1000 ... bench: 129,188,956 ns/iter (+/- 71,401,083)  
+
+Best previous 1000x1000 number was:
+bench_render_threaded_12t_1000_by_1000 ... bench: 138,224,777 ns/iter (+/- 25,675,038)  
+
+So rayon dropped it from 138M to 129M, or dropping to 93%, or a 7% drop over crossbeam.

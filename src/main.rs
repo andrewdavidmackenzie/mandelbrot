@@ -5,6 +5,9 @@ extern crate num;
 use num::Complex;
 
 extern crate image;
+extern crate rayon;
+
+use rayon::prelude::*;
 
 use image::ColorType;
 use image::png::PNGEncoder;
@@ -114,15 +117,17 @@ fn escapes(c: Complex<f64>, limit: u32) -> Option<u32> {
 
 fn render(pixels: &mut [u8], bounds: (usize, usize),
           upper_left: Complex<f64>, lower_right: Complex<f64>) {
-    let rows: Vec<&mut [u8]> = pixels.chunks_mut(bounds.0).collect();
-    for (row_index, row) in rows.into_iter().enumerate() {
-        let row_bounds = (bounds.0, 1);
-        let row_upper_left = pixel_to_point(bounds, (0, row_index),
-                                             upper_left, lower_right);
-        let row_lower_right = pixel_to_point(bounds, (bounds.0, row_index),
-                                              upper_left, lower_right);
-        render_row(row, row_bounds, row_index, row_upper_left, row_lower_right);
-    }
+    let rows = pixels.par_chunks_mut(bounds.0);
+    rows.into_par_iter()
+        .enumerate()
+        .for_each(|(row_index, row)| {
+            let row_bounds = (bounds.0, 1);
+            let row_upper_left = pixel_to_point(bounds, (0, row_index),
+                                                upper_left, lower_right);
+            let row_lower_right = pixel_to_point(bounds, (bounds.0, row_index),
+                                                 upper_left, lower_right);
+            render_row(row, row_bounds, row_index, row_upper_left, row_lower_right);
+        });
 }
 
 /// Render a row of the Mandlebrot set into a buffer of pixels
